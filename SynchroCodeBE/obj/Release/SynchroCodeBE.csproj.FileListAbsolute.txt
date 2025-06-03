@@ -12,3 +12,17 @@ W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\Synch
 W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroC.870EA8C4.Up2Date
 W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.exe
 W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.pdb
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\SynchroCodeBE.exe.config
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\SynchroCodeBE.exe
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\SynchroCodeBE.pdb
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\Newtonsoft.Json.dll
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Configuration.ConfigurationManager.dll
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Data.SqlClient.dll
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\Newtonsoft.Json.xml
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Configuration.ConfigurationManager.xml
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Data.SqlClient.xml
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.csproj.AssemblyReference.cache
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.csproj.CoreCompileInputs.cache
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroC.870EA8C4.Up2Date
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.exe
+C:\Users\BMAODAN\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.pdb

@@ -18,8 +18,33 @@ namespace SynchroCodeBE
 
         public SyncManager()
         {
-            sqlServerConnectionString = ConfigurationManager.ConnectionStrings["SqlServer"].ConnectionString;
-            accessConnectionString = ConfigurationManager.ConnectionStrings["Access"].ConnectionString;
+            try
+            {
+                // Vérifier que les chaînes de connexion existent
+                var sqlServerConfig = ConfigurationManager.ConnectionStrings["SqlServer"];
+                var accessConfig = ConfigurationManager.ConnectionStrings["Access"];
+
+                if (sqlServerConfig == null)
+                    throw new InvalidOperationException("Chaîne de connexion 'SqlServer' non trouvée dans App.config");
+
+                if (accessConfig == null)
+                    throw new InvalidOperationException("Chaîne de connexion 'Access' non trouvée dans App.config");
+
+                sqlServerConnectionString = sqlServerConfig.ConnectionString;
+                accessConnectionString = accessConfig.ConnectionString;
+
+                // Log pour diagnostic
+                System.Diagnostics.EventLog.WriteEntry("SynchroCodeBE",
+                    $"Constructeur SyncManager - SQL: {!string.IsNullOrEmpty(sqlServerConnectionString)}, Access: {!string.IsNullOrEmpty(accessConnectionString)}",
+                    System.Diagnostics.EventLogEntryType.Information);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.EventLog.WriteEntry("SynchroCodeBE",
+                    $"Erreur constructeur SyncManager: {ex.Message}",
+                    System.Diagnostics.EventLogEntryType.Error);
+                throw;
+            }
         }
 
         public void PerformSync()
