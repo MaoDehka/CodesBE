@@ -1,0 +1,14 @@
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\SynchroCodeBE.exe.config
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\SynchroCodeBE.exe
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\SynchroCodeBE.pdb
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\Newtonsoft.Json.dll
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Configuration.ConfigurationManager.dll
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Data.SqlClient.dll
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\Newtonsoft.Json.xml
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Configuration.ConfigurationManager.xml
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\bin\Release\System.Data.SqlClient.xml
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.csproj.AssemblyReference.cache
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.csproj.CoreCompileInputs.cache
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroC.870EA8C4.Up2Date
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.exe
+W:\IT\Applications\CodesBE\Synchro\SynchroCodeBE\SynchroCodeBE\obj\Release\SynchroCodeBE.pdb
