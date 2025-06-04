@@ -17,6 +17,7 @@ namespace SynchroCodeBE
         private Timer syncTimer;
         private SyncManager syncManager;
         private readonly string logFile = @"C:\Logs\DatabaseSync.log";
+
         public SyncService()
         {
             InitializeComponent();
@@ -28,6 +29,9 @@ namespace SynchroCodeBE
             WriteLog("Service démarré");
 
             syncManager = new SyncManager();
+
+            // AJOUT : Connecter le logging
+            syncManager.LogAction = WriteLog;
 
             // Timer pour synchronisation automatique toutes les 30 secondes
             syncTimer = new Timer(30000);
@@ -48,11 +52,14 @@ namespace SynchroCodeBE
         {
             try
             {
+                WriteLog("=== DÉBUT CYCLE SYNCHRONISATION ===");
                 syncManager.PerformSync();
+                WriteLog("=== FIN CYCLE SYNCHRONISATION ===");
             }
             catch (Exception ex)
             {
                 WriteLog($"Erreur lors de la synchronisation: {ex.Message}");
+                WriteLog($"Stack trace: {ex.StackTrace}");
             }
         }
 
