@@ -32,12 +32,12 @@ namespace SynchroCodeBE
         {
             try
             {
-                // Vérifier que les chaînes de connexion existent
-                var sqlServerConfig = ConfigurationManager.ConnectionStrings["SqlServer"];
+                // CORRECTION 1: Nom de la connexion corrigé (SQLServer au lieu de SqlServer)
+                var sqlServerConfig = ConfigurationManager.ConnectionStrings["SQLServer"];
                 var accessConfig = ConfigurationManager.ConnectionStrings["Access"];
 
                 if (sqlServerConfig == null)
-                    throw new InvalidOperationException("Chaîne de connexion 'SqlServer' non trouvée dans App.config");
+                    throw new InvalidOperationException("Chaîne de connexion 'SQLServer' non trouvée dans App.config");
 
                 if (accessConfig == null)
                     throw new InvalidOperationException("Chaîne de connexion 'Access' non trouvée dans App.config");
@@ -45,7 +45,6 @@ namespace SynchroCodeBE
                 sqlServerConnectionString = sqlServerConfig.ConnectionString;
                 accessConnectionString = accessConfig.ConnectionString;
 
-                // Log pour diagnostic
                 System.Diagnostics.EventLog.WriteEntry("SynchroCodeBE",
                     $"Constructeur SyncManager - SQL: {!string.IsNullOrEmpty(sqlServerConnectionString)}, Access: {!string.IsNullOrEmpty(accessConnectionString)}",
                     System.Diagnostics.EventLogEntryType.Information);
@@ -123,7 +122,6 @@ namespace SynchroCodeBE
 
                 LogInfo($"Trouvé {logsToProcess.Count} enregistrements SQL Server à synchroniser vers Access");
 
-                // Traiter chaque entrée de log
                 foreach (var logEntry in logsToProcess)
                 {
                     try
@@ -173,7 +171,6 @@ namespace SynchroCodeBE
 
                 LogInfo($"Trouvé {logsToProcess.Count} enregistrements Access à synchroniser vers SQL Server");
 
-                // Traiter chaque entrée de log
                 foreach (var logEntry in logsToProcess)
                 {
                     try
@@ -256,7 +253,6 @@ namespace SynchroCodeBE
             catch (Exception ex)
             {
                 LogError($"Impossible de désactiver les triggers sur {tableName}: {ex.Message}");
-                // Ne pas arrêter le processus - continuer
             }
         }
 
@@ -277,6 +273,297 @@ namespace SynchroCodeBE
             }
         }
 
+        // =============================================================================
+        // CORRECTIONS POUR BloModificationsFM ↔ Modifications
+        // =============================================================================
+
+        private void ApplyBloModificationsFMChangeToAccess(OleDbConnection connection, SyncLogEntry logEntry)
+        {
+            var keyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(logEntry.KeyValues);
+
+            // CORRECTION: Utiliser les vrais noms des clés depuis SQL Server
+            string codeBE = keyData["CodeBE"].ToString();
+            DateTime dateSaisie = DateTime.Parse(keyData["DateSaisie"].ToString());
+
+            switch (logEntry.Operation)
+            {
+                case "INSERT":
+                    InsertIntoModificationsFromSqlServer(connection, logEntry.NewValues, codeBE, dateSaisie);
+                    break;
+                case "UPDATE":
+                    UpdateModificationsFromSqlServer(connection, logEntry.NewValues, codeBE, dateSaisie);
+                    break;
+                case "DELETE":
+                    DeleteFromModifications(connection, codeBE, dateSaisie);
+                    break;
+            }
+        }
+
+        private void ApplyModificationsChangeToSqlServer(SqlConnection connection, SyncLogEntry logEntry)
+        {
+            var keyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(logEntry.KeyValues);
+
+            // CORRECTION: Utiliser les vrais noms des clés depuis Access
+            string codeBE = GetKeyValue(keyData, new[] { "Code_Be", "CodeBE" });
+            DateTime dateSaisie = GetKeyDateValue(keyData, new[] { "Dat_Sai", "DateSaisie", "Saisie" });
+
+            LogInfo($"Traitement Modifications: CodeBE='{codeBE}', DateSaisie='{dateSaisie:yyyy-MM-dd HH:mm:ss}'");
+
+            switch (logEntry.Operation)
+            {
+                case "INSERT":
+                    InsertIntoBloModificationsFMFromAccess(connection, logEntry.NewValues, codeBE, dateSaisie);
+                    break;
+                case "UPDATE":
+                    UpdateBloModificationsFMFromAccess(connection, logEntry.NewValues, codeBE, dateSaisie);
+                    break;
+                case "DELETE":
+                    DeleteFromBloModificationsFM(connection, codeBE, dateSaisie);
+                    break;
+            }
+        }
+
+        // SQL Server → Access (BloModificationsFM → Modifications)
+        private void InsertIntoModificationsFromSqlServer(OleDbConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
+        {
+            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
+
+            // DEBUG: Afficher le contenu du JSON pour identifier les champs manquants
+            LogInfo($"🔍 DEBUG JSON SQL→Access: {jsonValues}");
+            LogInfo($"🔍 DEBUG Clés: CodeBE={codeBE}, DateSaisie={dateSaisie:yyyy-MM-dd HH:mm:ss.fff}");
+
+            foreach (var kvp in data)
+            {
+                LogInfo($"   JSON[{kvp.Key}] = '{kvp.Value}'");
+            }
+
+            // CORRECTION: Utiliser les vrais noms de champs Access selon votre diagnostic
+            const string sql = @"
+        INSERT INTO Modifications ([Code_Be], [Dat_Sai], [Des_Mod], [Fai_Qui], [Fai_Dat], 
+        [Val_Qui], [Val_Dat], [Mic_Oui], [Mic_Qui], [Mic_Dat], [Tol_Oui], [Tol_Qui], [Tol_Dat], 
+        [CodeBE_Oui], [CodeBE_Qui], [CodeBE_Dat]) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            using (var command = new OleDbCommand(sql, connection))
+            {
+                try
+                {
+                    command.Parameters.Add("p1", OleDbType.VarChar, 50).Value = codeBE ?? "";
+                    command.Parameters.Add("p2", OleDbType.Date).Value = dateSaisie;
+                    command.Parameters.Add("p3", OleDbType.VarChar, 255).Value = GetStringValue(data, "Description") ?? "";
+                    command.Parameters.Add("p4", OleDbType.VarChar, 255).Value = GetStringValue(data, "Realisateur") ?? "";
+
+                    var dateRealisation = GetDateValue(data, "DateRealisation");
+                    command.Parameters.Add("p5", OleDbType.Date).Value = dateRealisation ?? (object)DBNull.Value;
+
+                    command.Parameters.Add("p6", OleDbType.VarChar, 255).Value = ""; // Val_Qui - champ qui n'existe pas dans SQL Server
+                    command.Parameters.Add("p7", OleDbType.Date).Value = DBNull.Value; // Val_Dat - champ qui n'existe pas dans SQL Server
+
+                    command.Parameters.Add("p8", OleDbType.Boolean).Value = GetBoolValue(data, "ModifTole");
+                    command.Parameters.Add("p9", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurTole") ?? "";
+
+                    var dateModifTole = GetDateValue(data, "DateModifTole");
+                    command.Parameters.Add("p10", OleDbType.Date).Value = dateModifTole ?? (object)DBNull.Value;
+
+                    command.Parameters.Add("p11", OleDbType.Boolean).Value = GetBoolValue(data, "ModifTole"); // Mic_Oui = ModifTole pour l'instant
+                    command.Parameters.Add("p12", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurTole") ?? ""; // Mic_Qui = RealisateurTole pour l'instant
+
+                    var dateModifTole2 = GetDateValue(data, "DateModifTole");
+                    command.Parameters.Add("p13", OleDbType.Date).Value = dateModifTole2 ?? (object)DBNull.Value; // Mic_Dat = DateModifTole pour l'instant
+
+                    command.Parameters.Add("p14", OleDbType.Boolean).Value = GetBoolValue(data, "ModifCodeBE");
+                    command.Parameters.Add("p15", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurCodeBE") ?? "";
+
+                    var dateModifCodeBE = GetDateValue(data, "DateModifCodeBE");
+                    command.Parameters.Add("p16", OleDbType.Date).Value = dateModifCodeBE ?? (object)DBNull.Value;
+
+                    // DEBUG: Afficher tous les paramètres avant exécution
+                    LogInfo($"🔍 DEBUG Paramètres OleDB:");
+                    for (int i = 0; i < command.Parameters.Count; i++)
+                    {
+                        var param = command.Parameters[i];
+                        LogInfo($"   p{i + 1}: {param.Value} (Type: {param.OleDbType})");
+                    }
+
+                    LogInfo($"INSERT Modifications: CodeBE={codeBE}, Saisie={dateSaisie:yyyy-MM-dd HH:mm:ss}");
+                    command.ExecuteNonQuery();
+                }
+                catch (Exception ex)
+                {
+                    LogError($"❌ Erreur détaillée INSERT Modifications: {ex.Message}");
+                    LogError($"❌ SQL: {sql}");
+                    LogError($"❌ Nombre de paramètres: {command.Parameters.Count}");
+                    throw;
+                }
+            }
+        }
+
+        private void UpdateModificationsFromSqlServer(OleDbConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
+        {
+            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
+
+            // CORRECTION: Utiliser les vrais noms de champs Access
+            const string sql = @"
+        UPDATE Modifications SET 
+        [Des_Mod] = ?, [Fai_Qui] = ?, [Fai_Dat] = ?, [Val_Qui] = ?, [Val_Dat] = ?, 
+        [Mic_Oui] = ?, [Mic_Qui] = ?, [Mic_Dat] = ?, [Tol_Oui] = ?, [Tol_Qui] = ?, [Tol_Dat] = ?, 
+        [CodeBE_Oui] = ?, [CodeBE_Qui] = ?, [CodeBE_Dat] = ?
+        WHERE [Code_Be] = ? AND [Dat_Sai] = ?";
+
+            using (var command = new OleDbCommand(sql, connection))
+            {
+                // Paramètres SET (14 paramètres)
+                command.Parameters.Add("p1", OleDbType.VarChar, 255).Value = GetStringValue(data, "Description") ?? "";
+                command.Parameters.Add("p2", OleDbType.VarChar, 255).Value = GetStringValue(data, "Realisateur") ?? "";
+
+                var dateRealisation = GetDateValue(data, "DateRealisation");
+                command.Parameters.Add("p3", OleDbType.Date).Value = dateRealisation ?? (object)DBNull.Value;
+
+                command.Parameters.Add("p4", OleDbType.VarChar, 255).Value = ""; // Val_Qui - pas dans SQL Server
+                command.Parameters.Add("p5", OleDbType.Date).Value = DBNull.Value; // Val_Dat - pas dans SQL Server
+
+                command.Parameters.Add("p6", OleDbType.Boolean).Value = GetBoolValue(data, "ModifTole"); // Mic_Oui = ModifTole
+                command.Parameters.Add("p7", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurTole") ?? ""; // Mic_Qui = RealisateurTole
+
+                var dateModifTole2 = GetDateValue(data, "DateModifTole");
+                command.Parameters.Add("p8", OleDbType.Date).Value = dateModifTole2 ?? (object)DBNull.Value; // Mic_Dat = DateModifTole
+
+                command.Parameters.Add("p9", OleDbType.Boolean).Value = GetBoolValue(data, "ModifTole");
+                command.Parameters.Add("p10", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurTole") ?? "";
+
+                var dateModifTole = GetDateValue(data, "DateModifTole");
+                command.Parameters.Add("p11", OleDbType.Date).Value = dateModifTole ?? (object)DBNull.Value;
+
+                command.Parameters.Add("p12", OleDbType.Boolean).Value = GetBoolValue(data, "ModifCodeBE");
+                command.Parameters.Add("p13", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurCodeBE") ?? "";
+
+                var dateModifCodeBE = GetDateValue(data, "DateModifCodeBE");
+                command.Parameters.Add("p14", OleDbType.Date).Value = dateModifCodeBE ?? (object)DBNull.Value;
+
+                // Paramètres WHERE (2 paramètres)
+                command.Parameters.Add("p15", OleDbType.VarChar, 50).Value = codeBE ?? "";
+                command.Parameters.Add("p16", OleDbType.Date).Value = dateSaisie;
+
+                LogInfo($"UPDATE Modifications WHERE Code_Be={codeBE}, Dat_Sai={dateSaisie:yyyy-MM-dd HH:mm:ss}");
+                int rowsAffected = command.ExecuteNonQuery();
+                LogInfo($"Lignes affectées: {rowsAffected}");
+            }
+        }
+
+        // Access → SQL Server (Modifications → BloModificationsFM)
+        private void InsertIntoBloModificationsFMFromAccess(SqlConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
+        {
+            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
+
+            // CORRECTION CRITIQUE: Utiliser la MÊME date que celle dans le JSON pour garantir la cohérence des clés
+            DateTime dateSaisieFromJson = GetDateValueAccess(data, "Dat_Sai") ?? dateSaisie;
+
+            LogInfo($"🔑 CLÉS: CodeBE={codeBE}, DateSaisie paramètre={dateSaisie:yyyy-MM-dd HH:mm:ss.fff}, DateSaisie JSON={dateSaisieFromJson:yyyy-MM-dd HH:mm:ss.fff}");
+
+            const string sql = @"
+        INSERT INTO BloModificationsFM (CodeBE, DateSaisie, Description, Realisateur, DateRealisation, 
+        ModifTole, RealisateurTole, DateModifTole, ModifCodeBE, RealisateurCodeBE, DateModifCodeBE, CausesBlocage) 
+        VALUES (@codeBE, @dateSaisie, @description, @realisateur, @dateRealisation, 
+        @modifTole, @realisateurTole, @dateModifTole, @modifCodeBE, @realisateurCodeBE, @dateModifCodeBE, @causesBlocage)";
+
+            using (var command = new SqlCommand(sql, connection))
+            {
+                command.Parameters.AddWithValue("@codeBE", codeBE);
+                command.Parameters.AddWithValue("@dateSaisie", dateSaisieFromJson); // UTILISER LA DATE DU JSON !
+
+                // CORRECTION: Mapping Access → SQL Server avec noms corrects selon le module
+                command.Parameters.AddWithValue("@description", GetStringValueAccess(data, "Des_Mod") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@realisateur", GetStringValueAccess(data, "Fai_Qui") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@dateRealisation", GetDateValueAccess(data, "Fai_Dat") ?? (object)DBNull.Value);
+
+                // Correspondances correctes selon l'Excel
+                command.Parameters.AddWithValue("@modifTole", GetBoolValueAccess(data, "Tol_Oui"));
+                command.Parameters.AddWithValue("@realisateurTole", GetStringValueAccess(data, "Tol_Qui") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@dateModifTole", GetDateValueAccess(data, "Tol_Dat") ?? (object)DBNull.Value);
+
+                command.Parameters.AddWithValue("@modifCodeBE", GetBoolValueAccess(data, "CodeBE_Oui"));
+                command.Parameters.AddWithValue("@realisateurCodeBE", GetStringValueAccess(data, "CodeBE_Qui") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@dateModifCodeBE", GetDateValueAccess(data, "CodeBE_Dat") ?? (object)DBNull.Value);
+
+                // CausesBlocage n'existe pas dans Access - mettre NULL
+                command.Parameters.AddWithValue("@causesBlocage", DBNull.Value);
+
+                LogInfo($"INSERT BloModificationsFM: CodeBE={codeBE}, DateSaisie={dateSaisieFromJson:yyyy-MM-dd HH:mm:ss.fff}");
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private void UpdateBloModificationsFMFromAccess(SqlConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
+        {
+            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
+
+            // CORRECTION CRITIQUE: Utiliser la MÊME date que celle dans le JSON
+            DateTime dateSaisieFromJson = GetDateValueAccess(data, "Dat_Sai") ?? dateSaisie;
+
+            LogInfo($"🔑 UPDATE CLÉS: CodeBE={codeBE}, DateSaisie paramètre={dateSaisie:yyyy-MM-dd HH:mm:ss.fff}, DateSaisie JSON={dateSaisieFromJson:yyyy-MM-dd HH:mm:ss.fff}");
+
+            const string sql = @"
+        UPDATE BloModificationsFM SET 
+        Description = @description, Realisateur = @realisateur, DateRealisation = @dateRealisation,
+        ModifTole = @modifTole, RealisateurTole = @realisateurTole, DateModifTole = @dateModifTole,
+        ModifCodeBE = @modifCodeBE, RealisateurCodeBE = @realisateurCodeBE, DateModifCodeBE = @dateModifCodeBE
+        WHERE CodeBE = @codeBE AND DateSaisie = @dateSaisie";
+
+            using (var command = new SqlCommand(sql, connection))
+            {
+                // Mapping selon le module Access et l'Excel
+                command.Parameters.AddWithValue("@description", GetStringValueAccess(data, "Des_Mod") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@realisateur", GetStringValueAccess(data, "Fai_Qui") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@dateRealisation", GetDateValueAccess(data, "Fai_Dat") ?? (object)DBNull.Value);
+
+                command.Parameters.AddWithValue("@modifTole", GetBoolValueAccess(data, "Tol_Oui"));
+                command.Parameters.AddWithValue("@realisateurTole", GetStringValueAccess(data, "Tol_Qui") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@dateModifTole", GetDateValueAccess(data, "Tol_Dat") ?? (object)DBNull.Value);
+
+                command.Parameters.AddWithValue("@modifCodeBE", GetBoolValueAccess(data, "CodeBE_Oui"));
+                command.Parameters.AddWithValue("@realisateurCodeBE", GetStringValueAccess(data, "CodeBE_Qui") ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@dateModifCodeBE", GetDateValueAccess(data, "CodeBE_Dat") ?? (object)DBNull.Value);
+
+                command.Parameters.AddWithValue("@codeBE", codeBE);
+                command.Parameters.AddWithValue("@dateSaisie", dateSaisieFromJson); // UTILISER LA DATE DU JSON !
+
+                LogInfo($"UPDATE BloModificationsFM WHERE CodeBE={codeBE}, DateSaisie={dateSaisieFromJson:yyyy-MM-dd HH:mm:ss.fff}");
+                int rowsAffected = command.ExecuteNonQuery();
+                LogInfo($"Lignes affectées: {rowsAffected}");
+            }
+        }
+
+        private void DeleteFromModifications(OleDbConnection connection, string codeBE, DateTime dateSaisie)
+        {
+            // CORRECTION: Utiliser les vrais noms de champs Access
+            const string sql = "DELETE FROM Modifications WHERE [Code_Be] = ? AND [Dat_Sai] = ?";
+
+            using (var command = new OleDbCommand(sql, connection))
+            {
+                command.Parameters.Add("p1", OleDbType.VarChar, 50).Value = codeBE ?? "";
+                command.Parameters.Add("p2", OleDbType.Date).Value = dateSaisie;
+
+                LogInfo($"DELETE Modifications WHERE Code_Be={codeBE}, Dat_Sai={dateSaisie:yyyy-MM-dd}");
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private void DeleteFromBloModificationsFM(SqlConnection connection, string codeBE, DateTime dateSaisie)
+        {
+            const string sql = "DELETE FROM BloModificationsFM WHERE CodeBE = @codeBE AND DateSaisie = @dateSaisie";
+
+            using (var command = new SqlCommand(sql, connection))
+            {
+                command.Parameters.AddWithValue("@codeBE", codeBE);
+                command.Parameters.AddWithValue("@dateSaisie", dateSaisie);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        // =============================================================================
+        // MÉTHODES PRODUITS (déjà fonctionnelles selon vous)
+        // =============================================================================
+
         private void ApplyBloDemandChangeToAccess(OleDbConnection connection, SyncLogEntry logEntry)
         {
             var keyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(logEntry.KeyValues);
@@ -295,27 +582,6 @@ namespace SynchroCodeBE
                     break;
                 case "DELETE":
                     DeleteFromProduits(connection, atelier, dateDemande, refBE);
-                    break;
-            }
-        }
-
-        private void ApplyBloModificationsFMChangeToAccess(OleDbConnection connection, SyncLogEntry logEntry)
-        {
-            var keyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(logEntry.KeyValues);
-
-            string codeBE = keyData["CodeBE"].ToString();
-            DateTime dateSaisie = DateTime.Parse(keyData["DateSaisie"].ToString());
-
-            switch (logEntry.Operation)
-            {
-                case "INSERT":
-                    InsertIntoModificationsFromSqlServer(connection, logEntry.NewValues, codeBE, dateSaisie);
-                    break;
-                case "UPDATE":
-                    UpdateModificationsFromSqlServer(connection, logEntry.NewValues, codeBE, dateSaisie);
-                    break;
-                case "DELETE":
-                    DeleteFromModifications(connection, codeBE, dateSaisie);
                     break;
             }
         }
@@ -342,34 +608,6 @@ namespace SynchroCodeBE
             }
         }
 
-        private void ApplyModificationsChangeToSqlServer(SqlConnection connection, SyncLogEntry logEntry)
-        {
-            var keyData = JsonConvert.DeserializeObject<Dictionary<string, object>>(logEntry.KeyValues);
-
-            // CORRECTION 1: Gestion robuste des clés
-            string codeBE = GetKeyValue(keyData, new[] { "Code_Be", "CodeBE" });
-            DateTime dateSaisie = GetKeyDateValue(keyData, new[] { "Dat_Sai", "DateSaisie" });
-
-            LogInfo($"Traitement Modifications: CodeBE='{codeBE}', DateSaisie='{dateSaisie:yyyy-MM-dd HH:mm:ss}'");
-
-            switch (logEntry.Operation)
-            {
-                case "INSERT":
-                    InsertIntoBloModificationsFMFromAccess(connection, logEntry.NewValues, codeBE, dateSaisie);
-                    break;
-                case "UPDATE":
-                    UpdateBloModificationsFMFromAccess(connection, logEntry.NewValues, codeBE, dateSaisie);
-                    break;
-                case "DELETE":
-                    DeleteFromBloModificationsFM(connection, codeBE, dateSaisie);
-                    break;
-            }
-        }
-
-        // =============================================================================
-        // MÉTHODES D'INSERTION ET MISE À JOUR - PRODUITS
-        // =============================================================================
-
         private void InsertIntoProduitsFromSqlServer(OleDbConnection connection, string jsonValues, string atelier, DateTime dateDemande, string refBE)
         {
             var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
@@ -382,7 +620,6 @@ namespace SynchroCodeBE
 
             using (var command = new OleDbCommand(sql, connection))
             {
-                // CORRECTION: Spécifier explicitement les types OleDb
                 command.Parameters.Add("@atelier", OleDbType.VarChar, 50).Value = atelier ?? "";
                 command.Parameters.Add("@dateDemande", OleDbType.Date).Value = dateDemande;
                 command.Parameters.Add("@refBE", OleDbType.VarChar, 50).Value = refBE ?? "";
@@ -390,21 +627,18 @@ namespace SynchroCodeBE
                 command.Parameters.Add("@typeErreur", OleDbType.VarChar, 255).Value = GetStringValue(data, "TypeErreur") ?? "";
                 command.Parameters.Add("@commentaire", OleDbType.VarChar, 255).Value = GetStringValue(data, "Commentaire") ?? "";
 
-                // Gestion spéciale des dates NULL
                 var dateModif = GetDateValue(data, "DateModif");
                 if (dateModif.HasValue)
                     command.Parameters.Add("@dateModif", OleDbType.Date).Value = dateModif.Value;
                 else
                     command.Parameters.Add("@dateModif", OleDbType.Date).Value = DBNull.Value;
 
-                // CORRECTION: Réponse ne peut pas être vide - utiliser NULL si pas de valeur
                 var reponseValue = GetStringValue(data, "Reponse");
                 if (string.IsNullOrEmpty(reponseValue))
                     command.Parameters.Add("@reponse", OleDbType.VarChar, 255).Value = DBNull.Value;
                 else
                     command.Parameters.Add("@reponse", OleDbType.VarChar, 255).Value = reponseValue;
 
-                // CORRECTION: Conversion boolean explicite
                 bool refusValue = GetIntValue(data, "Statut") == 5;
                 command.Parameters.Add("@refus", OleDbType.Boolean).Value = refusValue;
 
@@ -413,7 +647,6 @@ namespace SynchroCodeBE
             }
         }
 
-        // AUSSI corriger UpdateProduitsFromSqlServer
         private void UpdateProduitsFromSqlServer(OleDbConnection connection, string jsonValues, string atelier, DateTime dateDemande, string refBE)
         {
             var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
@@ -426,7 +659,6 @@ namespace SynchroCodeBE
 
             using (var command = new OleDbCommand(sql, connection))
             {
-                // Paramètres SET
                 command.Parameters.Add("@origineModif", OleDbType.VarChar, 255).Value = GetStringValue(data, "OrigineModif") ?? "";
                 command.Parameters.Add("@typeErreur", OleDbType.VarChar, 255).Value = GetStringValue(data, "TypeErreur") ?? "";
                 command.Parameters.Add("@commentaire", OleDbType.VarChar, 255).Value = GetStringValue(data, "Commentaire") ?? "";
@@ -437,7 +669,6 @@ namespace SynchroCodeBE
                 else
                     command.Parameters.Add("@dateModif", OleDbType.Date).Value = DBNull.Value;
 
-                // CORRECTION: Réponse ne peut pas être vide - utiliser NULL si pas de valeur
                 var reponseValue = GetStringValue(data, "Reponse");
                 if (string.IsNullOrEmpty(reponseValue))
                     command.Parameters.Add("@reponse", OleDbType.VarChar, 255).Value = DBNull.Value;
@@ -445,7 +676,6 @@ namespace SynchroCodeBE
                     command.Parameters.Add("@reponse", OleDbType.VarChar, 255).Value = reponseValue;
                 command.Parameters.Add("@refus", OleDbType.Boolean).Value = GetIntValue(data, "Statut") == 5;
 
-                // Paramètres WHERE
                 command.Parameters.Add("@atelierWhere", OleDbType.VarChar, 50).Value = atelier ?? "";
                 command.Parameters.Add("@dateDemandeWhere", OleDbType.Date).Value = dateDemande;
                 command.Parameters.Add("@refBEWhere", OleDbType.VarChar, 50).Value = refBE ?? "";
@@ -475,7 +705,6 @@ namespace SynchroCodeBE
                 command.Parameters.AddWithValue("@commentaire", GetStringValue(data, "Commentaire") ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@dateModif", GetDateValue(data, "DateModif") ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@reponse", GetStringValue(data, "Reponse") ?? (object)DBNull.Value);
-                // Conversion Refus -> Statut : Refus=True -> Statut=5, sinon Statut=1 par défaut
                 command.Parameters.AddWithValue("@statut", GetBoolValue(data, "Refus") ? 5 : 1);
 
                 command.ExecuteNonQuery();
@@ -499,7 +728,6 @@ namespace SynchroCodeBE
                 command.Parameters.AddWithValue("@commentaire", GetStringValue(data, "Commentaire") ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@dateModif", GetDateValue(data, "DateModif") ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@reponse", GetStringValue(data, "Reponse") ?? (object)DBNull.Value);
-                // Conversion Refus -> Statut
                 command.Parameters.AddWithValue("@statut", GetBoolValue(data, "Refus") ? 5 : 1);
                 command.Parameters.AddWithValue("@atelier", atelier);
                 command.Parameters.AddWithValue("@dateDemande", dateDemande);
@@ -533,189 +761,6 @@ namespace SynchroCodeBE
                 command.Parameters.AddWithValue("@atelier", atelier);
                 command.Parameters.AddWithValue("@dateDemande", dateDemande);
                 command.Parameters.AddWithValue("@refBE", refBE);
-                command.ExecuteNonQuery();
-            }
-        }
-
-        // =============================================================================
-        // MÉTHODES D'INSERTION ET MISE À JOUR - MODIFICATIONS
-        // =============================================================================
-
-        private void InsertIntoModificationsFromSqlServer(OleDbConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
-        {
-            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
-
-            const string sql = @"
-        INSERT INTO Modifications ([CodeBE], [Saisie], [DesMod], [FaiQui], [FaiDat], 
-        [TolOui], [TolQui], [TolDat], [CodeBEOui], [CodeBEQui], [CodeBEDat]) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-            using (var command = new OleDbCommand(sql, connection))
-            {
-                // CORRECTION: Paramètres POSITIONNELS pour OleDB (pas de noms)
-                command.Parameters.Add("p1", OleDbType.VarChar, 50).Value = codeBE ?? "";
-                command.Parameters.Add("p2", OleDbType.Date).Value = dateSaisie;
-                command.Parameters.Add("p3", OleDbType.VarChar, 255).Value = GetStringValue(data, "Description") ?? "";
-                command.Parameters.Add("p4", OleDbType.VarChar, 255).Value = GetStringValue(data, "Realisateur") ?? "";
-
-                var dateRealisation = GetDateValue(data, "DateRealisation");
-                command.Parameters.Add("p5", OleDbType.Date).Value = dateRealisation ?? (object)DBNull.Value;
-
-                // TolOui/TolQui : booléen + personne
-                command.Parameters.Add("p6", OleDbType.Boolean).Value = GetBoolValue(data, "ModifTole");
-                command.Parameters.Add("p7", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurTole") ?? "";
-
-                var dateModifTole = GetDateValue(data, "DateModifTole");
-                command.Parameters.Add("p8", OleDbType.Date).Value = dateModifTole ?? (object)DBNull.Value;
-
-                // CodeBEOui/CodeBEQui : booléen + personne
-                command.Parameters.Add("p9", OleDbType.Boolean).Value = GetBoolValue(data, "ModifCodeBE");
-                command.Parameters.Add("p10", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurCodeBE") ?? "";
-
-                var dateModifCodeBE = GetDateValue(data, "DateModifCodeBE");
-                command.Parameters.Add("p11", OleDbType.Date).Value = dateModifCodeBE ?? (object)DBNull.Value;
-
-                LogInfo($"INSERT Modifications: CodeBE={codeBE}, Saisie={dateSaisie:yyyy-MM-dd HH:mm:ss}");
-                command.ExecuteNonQuery();
-            }
-        }
-
-        private void UpdateModificationsFromSqlServer(OleDbConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
-        {
-            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
-
-            const string sql = @"
-        UPDATE Modifications SET 
-        [DesMod] = ?, [FaiQui] = ?, [FaiDat] = ?, [TolOui] = ?, [TolQui] = ?, [TolDat] = ?, 
-        [CodeBEOui] = ?, [CodeBEQui] = ?, [CodeBEDat] = ?
-        WHERE [CodeBE] = ? AND [Saisie] = ?";
-
-            using (var command = new OleDbCommand(sql, connection))
-            {
-                // Paramètres SET POSITIONNELS (ordre important!)
-                command.Parameters.Add("p1", OleDbType.VarChar, 255).Value = GetStringValue(data, "Description") ?? "";
-                command.Parameters.Add("p2", OleDbType.VarChar, 255).Value = GetStringValue(data, "Realisateur") ?? "";
-
-                var dateRealisation = GetDateValue(data, "DateRealisation");
-                command.Parameters.Add("p3", OleDbType.Date).Value = dateRealisation ?? (object)DBNull.Value;
-
-                command.Parameters.Add("p4", OleDbType.Boolean).Value = GetBoolValue(data, "ModifTole");
-                command.Parameters.Add("p5", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurTole") ?? "";
-
-                var dateModifTole = GetDateValue(data, "DateModifTole");
-                command.Parameters.Add("p6", OleDbType.Date).Value = dateModifTole ?? (object)DBNull.Value;
-
-                command.Parameters.Add("p7", OleDbType.Boolean).Value = GetBoolValue(data, "ModifCodeBE");
-                command.Parameters.Add("p8", OleDbType.VarChar, 255).Value = GetStringValue(data, "RealisateurCodeBE") ?? "";
-
-                var dateModifCodeBE = GetDateValue(data, "DateModifCodeBE");
-                command.Parameters.Add("p9", OleDbType.Date).Value = dateModifCodeBE ?? (object)DBNull.Value;
-
-                // Paramètres WHERE
-                command.Parameters.Add("p10", OleDbType.VarChar, 50).Value = codeBE ?? "";
-                command.Parameters.Add("p11", OleDbType.Date).Value = dateSaisie;
-
-                LogInfo($"UPDATE Modifications WHERE CodeBE={codeBE}, Saisie={dateSaisie:yyyy-MM-dd HH:mm:ss}");
-                int rowsAffected = command.ExecuteNonQuery();
-                LogInfo($"Lignes affectées: {rowsAffected}");
-            }
-        }
-
-        private void InsertIntoBloModificationsFMFromAccess(SqlConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
-        {
-            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
-
-            const string sql = @"
-        INSERT INTO BloModificationsFM (CodeBE, DateSaisie, Description, Realisateur, DateRealisation, 
-        ModifTole, RealisateurTole, DateModifTole, ModifCodeBE, RealisateurCodeBE, DateModifCodeBE, CausesBlocage) 
-        VALUES (@codeBE, @dateSaisie, @description, @realisateur, @dateRealisation, 
-        @modifTole, @realisateurTole, @dateModifTole, @modifCodeBE, @realisateurCodeBE, @dateModifCodeBE, @causesBlocage)";
-
-            using (var command = new SqlCommand(sql, connection))
-            {
-                command.Parameters.AddWithValue("@codeBE", codeBE);
-                command.Parameters.AddWithValue("@dateSaisie", dateSaisie);
-
-                // CORRECTION 3: Mapping Access → SQL Server avec noms corrects
-                command.Parameters.AddWithValue("@description", GetStringValueAccess(data, "Des_Mod") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@realisateur", GetStringValueAccess(data, "Fai_Qui") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@dateRealisation", GetDateValueAccess(data, "Fai_Dat") ?? (object)DBNull.Value);
-
-                // ModifTole = TolOui d'Access
-                command.Parameters.AddWithValue("@modifTole", GetBoolValueAccess(data, "Tol_Oui"));
-                command.Parameters.AddWithValue("@realisateurTole", GetStringValueAccess(data, "Tol_Qui") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@dateModifTole", GetDateValueAccess(data, "Tol_Dat") ?? (object)DBNull.Value);
-
-                // ModifCodeBE = CodeBEOui d'Access
-                command.Parameters.AddWithValue("@modifCodeBE", GetBoolValueAccess(data, "CodeBE_Oui"));
-                command.Parameters.AddWithValue("@realisateurCodeBE", GetStringValueAccess(data, "CodeBE_Qui") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@dateModifCodeBE", GetDateValueAccess(data, "CodeBE_Dat") ?? (object)DBNull.Value);
-
-                // CausesBlocage n'existe pas dans Access
-                command.Parameters.AddWithValue("@causesBlocage", DBNull.Value);
-
-                LogInfo($"INSERT BloModificationsFM: CodeBE={codeBE}, DateSaisie={dateSaisie:yyyy-MM-dd HH:mm:ss}");
-                command.ExecuteNonQuery();
-            }
-        }
-
-        private void UpdateBloModificationsFMFromAccess(SqlConnection connection, string jsonValues, string codeBE, DateTime dateSaisie)
-        {
-            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonValues);
-
-            const string sql = @"
-        UPDATE BloModificationsFM SET 
-        Description = @description, Realisateur = @realisateur, DateRealisation = @dateRealisation,
-        ModifTole = @modifTole, RealisateurTole = @realisateurTole, DateModifTole = @dateModifTole,
-        ModifCodeBE = @modifCodeBE, RealisateurCodeBE = @realisateurCodeBE, DateModifCodeBE = @dateModifCodeBE
-        WHERE CodeBE = @codeBE AND DateSaisie = @dateSaisie";
-
-            using (var command = new SqlCommand(sql, connection))
-            {
-                // Mapping Access → SQL Server
-                command.Parameters.AddWithValue("@description", GetStringValueAccess(data, "Des_Mod") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@realisateur", GetStringValueAccess(data, "Fai_Qui") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@dateRealisation", GetDateValueAccess(data, "Fai_Dat") ?? (object)DBNull.Value);
-
-                command.Parameters.AddWithValue("@modifTole", GetBoolValueAccess(data, "Tol_Oui"));
-                command.Parameters.AddWithValue("@realisateurTole", GetStringValueAccess(data, "Tol_Qui") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@dateModifTole", GetDateValueAccess(data, "Tol_Dat") ?? (object)DBNull.Value);
-
-                command.Parameters.AddWithValue("@modifCodeBE", GetBoolValueAccess(data, "CodeBE_Oui"));
-                command.Parameters.AddWithValue("@realisateurCodeBE", GetStringValueAccess(data, "CodeBE_Qui") ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@dateModifCodeBE", GetDateValueAccess(data, "CodeBE_Dat") ?? (object)DBNull.Value);
-
-                command.Parameters.AddWithValue("@codeBE", codeBE);
-                command.Parameters.AddWithValue("@dateSaisie", dateSaisie);
-
-                LogInfo($"UPDATE BloModificationsFM WHERE CodeBE={codeBE}, DateSaisie={dateSaisie:yyyy-MM-dd HH:mm:ss}");
-                int rowsAffected = command.ExecuteNonQuery();
-                LogInfo($"Lignes affectées: {rowsAffected}");
-            }
-        }
-
-        private void DeleteFromModifications(OleDbConnection connection, string codeBE, DateTime dateSaisie)
-        {
-            const string sql = "DELETE FROM Modifications WHERE [CodeBE] = ? AND [Saisie] = ?";
-
-            using (var command = new OleDbCommand(sql, connection))
-            {
-                AddStringParameter(command, "@codeBE", codeBE, 50);
-                command.Parameters.Add("@saisie", OleDbType.Date).Value = dateSaisie;
-
-                LogInfo($"DELETE Modifications WHERE CodeBE={codeBE}, Saisie={dateSaisie:yyyy-MM-dd}");
-                command.ExecuteNonQuery();
-            }
-        }
-
-        private void DeleteFromBloModificationsFM(SqlConnection connection, string codeBE, DateTime dateSaisie)
-        {
-            const string sql = "DELETE FROM BloModificationsFM WHERE CodeBE = @codeBE AND DateSaisie = @dateSaisie";
-
-            using (var command = new SqlCommand(sql, connection))
-            {
-                command.Parameters.AddWithValue("@codeBE", codeBE);
-                command.Parameters.AddWithValue("@dateSaisie", dateSaisie);
                 command.ExecuteNonQuery();
             }
         }
@@ -800,7 +845,7 @@ namespace SynchroCodeBE
                 }
             }
 
-            // CORRECTION 4: Si pas de date valide, utiliser DateTime.Now avec seconde tronquée
+            // Si pas de date valide, utiliser DateTime.Now avec seconde tronquée
             var now = DateTime.Now;
             return new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
         }
@@ -831,14 +876,6 @@ namespace SynchroCodeBE
             return false;
         }
 
-        private void AddStringParameter(OleDbCommand command, string paramName, string value, int maxLength)
-        {
-            if (string.IsNullOrEmpty(value))
-                command.Parameters.Add(paramName, OleDbType.VarChar, maxLength).Value = DBNull.Value;
-            else
-                command.Parameters.Add(paramName, OleDbType.VarChar, maxLength).Value = value;
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -849,7 +886,6 @@ namespace SynchroCodeBE
         {
             if (!disposed && disposing)
             {
-                // Cleanup managed resources
                 disposed = true;
             }
         }

@@ -3,10 +3,6 @@
   "WorkspaceRootPath": "C:\\Users\\BMAODAN\\SynchroCodeBE\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|c:\\users\\bmaodan\\synchrocodebe\\synchrocodebe\\syncservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\syncservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|C:\\Users\\BMAODAN\\SynchroCodeBE\\synchrocodebe\\syncmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\syncmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -15,12 +11,16 @@
       "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\app.config||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|C:\\Users\\BMAODAN\\SynchroCodeBE\\synchrocodebe\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|c:\\users\\bmaodan\\synchrocodebe\\synchrocodebe\\syncservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\syncservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|C:\\Users\\BMAODAN\\SynchroCodeBE\\synchrocodebe\\synclogentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\synclogentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|C:\\Users\\BMAODAN\\SynchroCodeBE\\synchrocodebe\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|solutionrelative:synchrocodebe\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{040EE232-3CF2-4933-96D0-FAD8F0D46BF9}|SynchroCodeBE\\SynchroCodeBE.csproj|C:\\Users\\BMAODAN\\SynchroCodeBE\\synchrocodebe\\projectinstaller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
@@ -42,7 +42,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 336,
-          "SelectedChildIndex": 10,
+          "SelectedChildIndex": 9,
           "Children": [
             {
               "$type": "Bookmark",
@@ -62,15 +62,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "App.config",
               "DocumentMoniker": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\App.config",
               "RelativeDocumentMoniker": "SynchroCodeBE\\App.config",
               "ToolTip": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\App.config",
               "RelativeToolTip": "SynchroCodeBE\\App.config",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAALAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB8AAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000601|",
-              "WhenOpened": "2025-06-02T07:13:25.482Z"
+              "WhenOpened": "2025-06-02T07:13:25.482Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -96,7 +97,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\Program.cs",
               "RelativeDocumentMoniker": "SynchroCodeBE\\Program.cs",
@@ -108,37 +109,39 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 3,
               "Title": "SyncLogEntry.cs",
               "DocumentMoniker": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncLogEntry.cs",
               "RelativeDocumentMoniker": "SynchroCodeBE\\SyncLogEntry.cs",
               "ToolTip": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncLogEntry.cs",
               "RelativeToolTip": "SynchroCodeBE\\SyncLogEntry.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAFAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-05-30T06:59:34.42Z"
+              "WhenOpened": "2025-05-30T06:59:34.42Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "SyncManager.cs",
               "DocumentMoniker": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncManager.cs",
               "RelativeDocumentMoniker": "SynchroCodeBE\\SyncManager.cs",
               "ToolTip": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncManager.cs",
               "RelativeToolTip": "SynchroCodeBE\\SyncManager.cs",
-              "ViewState": "AgIAAIYCAAAAAAAAAAAAAPgCAAABAAAAAAAAAA==",
+              "ViewState": "AgIAADADAAAAAAAAAAAmwDgDAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-05-30T06:57:05.968Z"
+              "WhenOpened": "2025-05-30T06:57:05.968Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "SyncService.cs",
               "DocumentMoniker": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncService.cs",
               "RelativeDocumentMoniker": "SynchroCodeBE\\SyncService.cs",
               "ToolTip": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncService.cs",
               "RelativeToolTip": "SynchroCodeBE\\SyncService.cs",
-              "ViewState": "AgIAACUAAAAAAAAAAAAmwD8AAAAtAAAAAAAAAA==",
+              "ViewState": "AgIAACYAAAAAAAAAAAAmwE4AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-05-30T06:54:34.888Z",
               "EditorCaption": ""
@@ -152,7 +155,8 @@
               "ToolTip": "C:\\Users\\BMAODAN\\SynchroCodeBE\\SynchroCodeBE\\SyncService.cs [Design]",
               "RelativeToolTip": "SynchroCodeBE\\SyncService.cs [Design]",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-05-28T11:57:25.803Z"
+              "WhenOpened": "2025-05-28T11:57:25.803Z",
+              "EditorCaption": " [Design]"
             }
           ]
         }
